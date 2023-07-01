@@ -1,7 +1,8 @@
 provider "google" {
-    project = "terraform-gcp-391114"
+    project = var.project
     credentials = "${file("terraform-gcp-391114-565919a79769.json")}"
-    region = "us-east4"
+    region = var.region
+    # region = "us-east4"
 }
 
 
@@ -25,58 +26,112 @@ provider "google" {
 #   }
 # }
 
-resource "google_compute_instance" "k8s_instances" {
-  count        = 3
-  name         = "k8s-${count.index + 1}"
-  machine_type = "e2-standard-2"
-  zone = "us-east4-b"
+resource "google_compute_instance" "app-01" {
+  name         = "app-01"
+  machine_type = var.instance_type
+  # machine_type = "e2-small"
+  zone = var.zone
+  # zone = "us-east4-b"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = 20
+      image = var.os
+      # image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      size  = var.disk_size
       type  = "pd-standard"
     }
   }
 
   network_interface {
     network = "default"
+    network_ip = "10.150.0.21"
     access_config {}
   }
 
 
 
 metadata = {
-    ssh-keys = "ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8cu4J6FGU60cAPXuN5IRB2DkowzCE0p7yeOhy/IvdBIjEOuJEsjEkqL6ZoDQV7c74/WIDKrZnuZi/s1Lupm9+wgEFkvlA4OCDa3xJW5lmBc0BxabQpGL+iLuKlEYxUBPPAJc0NSIoMIbgWkbf8qdoDOrmhUgYEYkgzyzoxy8kqkVvu9B/YpqNDz09cw656rdp/DO9owAcUkLm+28v0LGuRib1eI5sD4SPqWwBsuSaMpzdNwPRNKosB9sYhr1gAlYxvs8wwH5faSoYBWASacgkgyLLuGresSm1AWQRJ+YOo+DbZVfgmHAGiMlYR149e8Hh9ty+ExTiRY+wAGz8IcdXlKkwOEuWDAjvYkC+euNIP93e851NkElzHF1t14FR3hxWGvlX+U5JDyWTC8QY7VPqzjBxHruxKr3fD+Ats8LWKvxuODBeIhtaF2oTvFI1WB9icB1kQxZe8h0Audn1oA9ZO+tMmd0GEkuVr8dT5QNs8O5uzYNFafiW9xBKf5YgM+s= ubuntu"
+    ssh-keys = var.keys
   }
 
   tags = ["http-server", "https-server"]
 }
 
-resource "google_compute_instance" "rancher_instance" {
-  count        = 1
-  name         = "rancher-srv"
-  machine_type = "e2-standard-2"
-  zone = "us-east4-b"
+resource "google_compute_instance" "db-01" {
+  name         = "db-01"
+  machine_type = var.instance_type
+  # machine_type = "e2-small"
+  zone = var.zone
+  # zone = "us-east4-b"
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = 30
+      image = var.os
+      # image = "ubuntu-os-cloud/ubuntu-2004-lts"
+      size  = var.disk_size
       type  = "pd-standard"
     }
   }
 
   network_interface {
     network = "default"
+    network_ip = "10.150.0.22"
     access_config {}
   }
 
+
+
+metadata = {
+    ssh-keys = var.keys
+  }
+
+  tags = ["http-server", "https-server"]
+}
+
+resource "google_compute_instance" "control-node" {
+  count        = 1
+  name         = "control-node"
+  machine_type = var.instance_type
+  zone = var.zone
+
+  boot_disk {
+    initialize_params {
+      image = var.os
+      size  = var.disk_size
+      type  = "pd-standard"
+    }
+  }
+
+  network_interface {
+    network = "default"
+    network_ip = "10.150.0.20"
+    access_config {}
+  }
+
+
+    connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = file("/home/ricardo/work-out/id_rsa")
+    host        = self.network_interface[0].access_config[0].nat_ip
+  }
+
+provisioner "file" {
+    source      = "/home/ricardo/automate/install.sh"
+    destination = "/tmp/install.sh"
+  }
+
   
+provisioner "remote-exec" {
+    inline = [
+      "chmod +x /tmp/install.sh",
+      "sudo bash /tmp/install.sh"
+    ]
+  }
 
-
+  
   metadata = {
-    ssh-keys = "ubuntu:ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC8cu4J6FGU60cAPXuN5IRB2DkowzCE0p7yeOhy/IvdBIjEOuJEsjEkqL6ZoDQV7c74/WIDKrZnuZi/s1Lupm9+wgEFkvlA4OCDa3xJW5lmBc0BxabQpGL+iLuKlEYxUBPPAJc0NSIoMIbgWkbf8qdoDOrmhUgYEYkgzyzoxy8kqkVvu9B/YpqNDz09cw656rdp/DO9owAcUkLm+28v0LGuRib1eI5sD4SPqWwBsuSaMpzdNwPRNKosB9sYhr1gAlYxvs8wwH5faSoYBWASacgkgyLLuGresSm1AWQRJ+YOo+DbZVfgmHAGiMlYR149e8Hh9ty+ExTiRY+wAGz8IcdXlKkwOEuWDAjvYkC+euNIP93e851NkElzHF1t14FR3hxWGvlX+U5JDyWTC8QY7VPqzjBxHruxKr3fD+Ats8LWKvxuODBeIhtaF2oTvFI1WB9icB1kQxZe8h0Audn1oA9ZO+tMmd0GEkuVr8dT5QNs8O5uzYNFafiW9xBKf5YgM+s= ubuntu"
+    ssh-keys = var.keys
   }
 
   tags = ["http-server", "https-server"]
