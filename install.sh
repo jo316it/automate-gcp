@@ -11,3 +11,5 @@ sudo cat <<EOT >> /etc/hosts
     10.150.0.21 app-01
     10.150.0.22 db-01
 EOT
+
+
