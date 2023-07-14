@@ -1,76 +1,15 @@
 provider "google" {
     project = var.project
-    credentials = "${file("terraform-gcp-391114-565919a79769.json")}"
+    credentials = "${file("key.json")}"
     region = var.region
     # region = "us-east4"
 }
 
 
-resource "google_compute_instance" "app-01" {
-  name         = "app-01"
-  machine_type = var.instance_type
-  # machine_type = "e2-small"
-  zone = var.zone
-  # zone = "us-east4-b"
 
-  boot_disk {
-    initialize_params {
-      image = var.os
-      # image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = var.disk_size
-      type  = "pd-standard"
-    }
-  }
-
-  network_interface {
-    network = "default"
-    network_ip = "10.150.0.21"
-    access_config {}
-  }
-
-
-
-metadata = {
-    ssh-keys = var.keys
-  }
-
-  tags = ["http-server", "https-server"]
-}
-
-resource "google_compute_instance" "db-01" {
-  name         = "db-01"
-  machine_type = var.instance_type
-  # machine_type = "e2-small"
-  zone = var.zone
-  # zone = "us-east4-b"
-
-  boot_disk {
-    initialize_params {
-      image = var.os
-      # image = "ubuntu-os-cloud/ubuntu-2004-lts"
-      size  = var.disk_size
-      type  = "pd-standard"
-    }
-  }
-
-  network_interface {
-    network = "default"
-    network_ip = "10.150.0.22"
-    access_config {}
-  }
-
-
-
-metadata = {
-    ssh-keys = var.keys
-  }
-
-  tags = ["http-server", "https-server"]
-}
-
-resource "google_compute_instance" "control-node" {
+resource "google_compute_instance" "sonar-cube" {
   count        = 1
-  name         = "control-node"
+  name         = "sonar-cube"
   machine_type = var.instance_type
   zone = var.zone
 
@@ -82,10 +21,16 @@ resource "google_compute_instance" "control-node" {
     }
   }
 
+  labels = {
+    goog-ec-src = "vm_add-tf"
+    name        = "sonar"
+    type        = "server"
+  }
+
 
   network_interface {
     network = "default"
-    network_ip = "10.150.0.20"
+    network_ip = "10.150.0.39"
     access_config {}
   }
 
@@ -97,10 +42,23 @@ resource "google_compute_instance" "control-node" {
     host        = self.network_interface[0].access_config[0].nat_ip
   }
 
+
+
 provisioner "file" {
-    source      = "/home/ricardo/automate/install.sh"
+    source      = "/home/ricardo/sonar-cube/sonar.service"
+    destination = "/tmp/sonar.service"
+}
+
+provisioner "file" {
+    source      = "/home/ricardo/sonar-cube/sonar-scanner.sh"
+    destination = "/tmp/sonar-scanner.sh"
+}
+
+provisioner "file" {
+    source      = "/home/ricardo/sonar-cube/install.sh"
     destination = "/tmp/install.sh"
-  }
+}
+
 
   
 provisioner "remote-exec" {

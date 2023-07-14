@@ -20,7 +20,7 @@ variable region {
 
 variable instance_type {
 
-  default = "e2-small"
+  default = "e2-standard-2"
   description = "Define the type of instance"
 
 
@@ -32,12 +32,13 @@ variable zone {
 
 variable os {
   type        = string
-  default     = "projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230628"
+  # default     = "projects/centos-cloud/global/images/centos-7-v20230615"
+  default = "projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20230628"
 }
 
 variable disk_size {
 
-  default     = 10
+  default     = 30
  
 }
 
